@@ -29,15 +29,9 @@ extensions:
 exporters:
   - gomod: go.opentelemetry.io/collector/exporter/debugexporter v0.115.0
   - gomod: go.opentelemetry.io/collector/exporter/nopexporter v0.115.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/coralogixexporter v0.115.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.115.0
 
 
 processors:
-  - gomod: go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.115.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/tailsamplingprocessor v0.115.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.115.0
-  
   # add the otelity starlark processor here
   - gomod: github.com/daidokoro/otelity/processors/starlarkprocessor v0.1.0
 
@@ -45,7 +39,6 @@ processors:
 receivers:
   - gomod: go.opentelemetry.io/collector/receiver/nopreceiver v0.115.0
   - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.115.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver v0.115.0
 
 
 providers:
