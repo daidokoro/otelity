@@ -3,7 +3,7 @@
 A repo for my Open Telemetry components that don't quite fit with the main contrib distro. Can contain anything from new and experimental to modified versions of existing components.
 
 ## Components
-- [starklarktransform processor](./processors/starlarktransformprocessor/README.md)
+- [starklark processor](./processors/starlarkprocessor/README.md)
 
 
 ## How to use
