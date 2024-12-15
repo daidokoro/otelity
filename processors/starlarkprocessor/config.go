@@ -17,11 +17,18 @@ type Config struct {
 	// source of startlark script
 	// accepts both file path and url
 	Script string `mapstructure:"script"`
+
+	// entrypoint -  the name of the funciton to be called
+	EntryPoint string `mapstructure:"entrypoint"`
 }
 
 func (c *Config) validate() error {
 	if c.Code == "" && c.Script == "" {
 		return errors.New("a value must be given for altest one, [code] or [script]")
+	}
+
+	if c.EntryPoint == "" {
+		return errors.New("[entrypoint] must be provided")
 	}
 
 	return nil

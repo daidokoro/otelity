@@ -41,13 +41,14 @@ func (f *fakeLogConsumer) Capabilities() consumer.Capabilities {
 
 func TestLogConsumer(t *testing.T) {
 	lp := NewProcessor(context.Background(),
-		zap.NewNop(), "",
+		zap.NewNop(), "", "",
 		&fakeLogConsumer{t: t, expected: testlogevent})
 
 	testcases := []struct {
 		name             string
 		event            string
 		code             string
+		entry            string
 		expectError      error
 		expectStartError error
 		next             consumer.Logs
@@ -55,9 +56,9 @@ func TestLogConsumer(t *testing.T) {
 		{
 			name:  "update event input",
 			event: testlogevent,
+			entry: "transform",
 			code: heredoc.Doc(`
-						def transform(event):
-							e = json.decode(event)
+						def transform(e):
 							e["resourceLogs"][0]["resource"]["attributes"][0]["value"]["stringValue"] = "other.log"
 							return e`),
 
@@ -70,29 +71,32 @@ func TestLogConsumer(t *testing.T) {
 			name:  "nil or empty transform return",
 			event: testlogevent,
 			code:  `def transform(event): return`,
+			entry: "transform",
 			next:  &fakeLogConsumer{t: t, expected: testlogevent},
 		},
 		{
 			name:        "bad transform syntax",
 			event:       testlogevent,
 			code:        `def transform(event): event["cats"]; return`,
+			entry:       "transform",
 			next:        &fakeLogConsumer{t: t, expected: testlogevent},
-			expectError: errors.New("error calling transform function:"),
+			expectError: errors.New(`error calling entrypoint function: key "cats" not in dict`),
 		},
 		{
 			name:             "missing transform function",
 			event:            testlogevent,
 			code:             `def run(event): return event`,
+			entry:            "",
 			next:             &fakeLogConsumer{t: t, expected: testlogevent},
 			expectError:      nil,
-			expectStartError: errors.New("starlark: no 'transform' function defined in script"),
+			expectStartError: errors.New("starlark: no '' function defined in script for entrypoint"),
 		},
 		{
 			name:  "regex transform",
 			event: testlogevent,
+			entry: "transform",
 			code: heredoc.Doc(`
 								def transform(event):
-									event = json.decode(event)
 									val = event['resourceLogs'][0]['scopeLogs'][0]['logRecords'][0]['body']['stringValue']
 									val = re.sub('{.*}', 'NONE', val)
 									start, end = re.search('[A-Z]{4}', val)
@@ -118,6 +122,7 @@ func TestLogConsumer(t *testing.T) {
 	for _, tt := range testcases {
 		t.Run(tt.name, func(t *testing.T) {
 			lp.code = tt.code
+			lp.entry = tt.entry
 			err := lp.Start(context.Background(), nil)
 			if tt.expectStartError != nil {
 				require.ErrorContains(t, err, tt.expectStartError.Error())
@@ -193,14 +198,14 @@ func fillLogTwo(log plog.LogRecord) {
 
 func BenchmarkLogProcessor(b *testing.B) {
 	benchcases := []struct {
-		name string
-		code string
+		name  string
+		code  string
+		entry string
 	}{
 		{
 			`set(attributes["test"], "pass") where body == "operationA"`,
 			heredoc.Doc(`
 				def transform(event):
-					e = json.decode(event)
 					for r in e["resourceLogs"]:
 						for sl in r["scopeLogs"]:
 							for lr in sl["logRecords"]:
@@ -210,12 +215,12 @@ func BenchmarkLogProcessor(b *testing.B) {
 										"value": {"stringValue": "pass"}
 									})
 					return e`),
+			"transform",
 		},
 		{
 			`set(attributes["test"], "pass") where resource.attributes["host.name"] == "localhost"`,
 			heredoc.Doc(`
 				def transform(event):
-					e = json.decode(event)
 					for rlogs in e["resourceLogs"]:
 						if [
 							r for r in rlogs['resource']['attributes']
@@ -228,6 +233,7 @@ func BenchmarkLogProcessor(b *testing.B) {
 										"value": {"stringValue": "pass"}
 									})
 					return e`),
+			"transform",
 		},
 	}
 
@@ -236,7 +242,7 @@ func BenchmarkLogProcessor(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				ld := constructLogs()
 				lp := NewProcessor(context.Background(),
-					zap.NewNop(), bc.code,
+					zap.NewNop(), bc.code, bc.entry,
 					&fakeLogConsumer{})
 
 				if err := lp.Start(context.Background(), nil); err != nil {

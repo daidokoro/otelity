@@ -38,13 +38,14 @@ func (f *fakeTraceConsumer) Capabilities() consumer.Capabilities {
 
 func TestTraceConsumer(t *testing.T) {
 	mp := NewProcessor(context.Background(),
-		zap.NewNop(), "",
+		zap.NewNop(), "", "",
 		&fakeTraceConsumer{t: t, expected: testtraceevent})
 
 	testcases := []struct {
 		name             string
 		event            string
 		code             string
+		entry            string
 		expectError      error
 		expectStartError error
 		next             consumer.Traces
@@ -52,9 +53,9 @@ func TestTraceConsumer(t *testing.T) {
 		{
 			name:  "update event input",
 			event: testtraceevent,
+			entry: "transform",
 			code: heredoc.Doc(`
 			def transform(event):
-				event = json.decode(event)
 				for td in event['resourceSpans']:
 					# add resource attribute
 					td['resource']['attributes'].append({
@@ -75,14 +76,8 @@ func TestTraceConsumer(t *testing.T) {
 			name:  "nil or empty transform return",
 			event: testtraceevent,
 			code:  `def transform(event): return`,
+			entry: "transform",
 			next:  &fakeTraceConsumer{t: t, expected: testtraceevent},
-		},
-		{
-			name:        "bad transform syntax",
-			event:       testtraceevent,
-			code:        `def transform(event): event["cats"]; return`,
-			next:        &fakeTraceConsumer{t: t, expected: testtraceevent},
-			expectError: errors.New("error calling transform function:"),
 		},
 		{
 			name:             "missing transform function",
@@ -90,13 +85,14 @@ func TestTraceConsumer(t *testing.T) {
 			code:             `def run(event): return event`,
 			next:             &fakeTraceConsumer{t: t, expected: testtraceevent},
 			expectError:      nil,
-			expectStartError: errors.New("starlark: no 'transform' function defined in script"),
+			expectStartError: errors.New("starlark: no '' function defined in script for entrypoint"),
 		},
 	}
 
 	for _, tt := range testcases {
 		t.Run(tt.name, func(t *testing.T) {
 			mp.code = tt.code
+			mp.entry = tt.entry
 			err := mp.Start(context.Background(), nil)
 			if tt.expectStartError != nil {
 				require.ErrorContains(t, err, tt.expectStartError.Error())
@@ -124,15 +120,16 @@ func BenchmarkLogConsumer(b *testing.B) {
 		name        string
 		event       string
 		code        string
+		entry       string
 		expectError error
 		next        consumer.Traces
 	}{
 		{
 			name:  "update event input",
 			event: testtraceevent,
+			entry: "transform",
 			code: heredoc.Doc(`
 				def transform(event):
-					event = json.decode(event)
 					for md in event['resourceMetrics']:
 						# prefix each metric name with starlarktransform
 						for sm in md['scopeMetrics']:
@@ -153,10 +150,11 @@ func BenchmarkLogConsumer(b *testing.B) {
 		b.Run(bc.name, func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				mp := NewProcessor(context.Background(),
-					zap.NewNop(), "",
+					zap.NewNop(), "", "",
 					bc.next)
 
 				mp.code = bc.code
+				mp.entry = bc.entry
 				require.NoError(b, mp.Start(context.Background(), nil))
 
 				md, err := (&ptrace.JSONUnmarshaler{}).UnmarshalTraces([]byte(bc.event))

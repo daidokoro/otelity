@@ -27,14 +27,16 @@ func TestConfig(t *testing.T) {
 		{
 			name: "with file path",
 			config: Config{
-				Script: "./testdata/test.star",
+				Script:     "./testdata/test.star",
+				EntryPoint: "transform",
 			},
 			expected: testscript,
 		},
 		{
 			name: "with http url",
 			config: Config{
-				Script: mockHTTPServer.URL,
+				Script:     mockHTTPServer.URL,
+				EntryPoint: "transform",
 			},
 			expected: testscript,
 		},
@@ -42,6 +44,13 @@ func TestConfig(t *testing.T) {
 			name:          "empty script and code",
 			config:        Config{},
 			validationErr: errors.New("a value must be given for altest one, [code] or [script]"),
+		},
+		{
+			name: "empty EntryPoint",
+			config: Config{
+				Script: "./testdata/test.star",
+			},
+			validationErr: errors.New("[entrypoint] must be provided"),
 		},
 	}
 

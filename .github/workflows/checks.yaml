@@ -1,0 +1,17 @@
+name: checks
+on:
+  pull_request:
+    paths-ignore:
+      - ".github/**"
+
+jobs:
+  check-changelog:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Changelog modified
+        uses: dangoslen/changelog-enforcer@v3
+        with:
+          changeLogPath: "./CHANGELOG.md"
+          missingUpdateErrorMessage: |
+            Please include an entry into `CHANGELOG.md` to describe what happened in the PR
