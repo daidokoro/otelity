@@ -32,7 +32,7 @@ To configure starlark, you can add your code using the `code` option in the conf
 ```yaml
 processors:
   starlark:
-	entrypoint: transform
+    entrypoint: transform
     code: |
       def transform(event):
         event = json.decode(event)
@@ -45,14 +45,14 @@ Alternatively, in cases where you prefer to not have starlark code present or vi
 ```yaml
 processors:
   starlark:
-	entrypoint: transform
-	script: /path/to/script.star
+    entrypoint: transform
+    script: /path/to/script.star
 
 # or
 processors:
   starlark:
-	entrypoint: transform
-	script: https://some.url.com/script.star
+    entrypoint: transform
+    script: https://some.url.com/script.star
 
 ```
 
@@ -102,22 +102,22 @@ You are able to use the print function or log module to print output to the Open
 
 ```python
 def transform(event):
-	print("hello world")
-	return json.decode(event)
+    print("hello world")
+    return json.decode(event)
 ```
 
 The print statement above would result in the following output in the Open Telemetry runtime log when opentelemetry is run in debug mode:
 
 ```log
-2023-09-23T16:50:17.328+0200	debug	traces/processor.go:25	hello world	{"kind": "processor", "name": "starlark/traces", "pipeline": "traces", "thread": "trace.processor", "source": "starlark/code"}
+2023-09-23T16:50:17.328+0200    debug    traces/processor.go:25    hello world    {"kind": "processor", "name": "starlark/traces", "pipeline": "traces", "thread": "trace.processor", "source": "starlark/code"}
 ```
 
 If you want to log messages outside of the debug mode, you can use the log module:
 
 ```python
 def transform(event):
-	log.info("hello world")
-	return json.decode(event)
+    log.info("hello world")
+    return json.decode(event)
 ```
 
 There are 3 log levels available: - `log.info` - `log.warn` - `log.error`
@@ -138,34 +138,34 @@ This section contains examples of the event payloads that are sent to the starla
 
 ```json
 {
-	"resourceLogs": [{
-		"resource": {
-			"attributes": [{
-				"key": "log.file.name",
-				"value": {
-					"stringValue": "test.log"
-				}
-			}]
-		},
-		"scopeLogs": [{
-			"scope": {},
-			"logRecords": [{
-				"observedTimeUnixNano": "1694127596456358000",
-				"body": {
-					"stringValue": "2023-09-06T01:09:24.045+0200 INFO starting app.",
-					"attributes": [{
+    "resourceLogs": [{
+        "resource": {
+            "attributes": [{
+                "key": "log.file.name",
+                "value": {
+                    "stringValue": "test.log"
+                }
+            }]
+        },
+        "scopeLogs": [{
+            "scope": {},
+            "logRecords": [{
+                "observedTimeUnixNano": "1694127596456358000",
+                "body": {
+                    "stringValue": "2023-09-06T01:09:24.045+0200 INFO starting app.",
+                    "attributes": [{
 
-						"key": "app",
-						"value": {
-							"stringValue": "dev"
-						}
-					}],
-					"traceId": "",
-					"spanId": ""
-				}
-			}]
-		}]
-	}]
+                        "key": "app",
+                        "value": {
+                            "stringValue": "dev"
+                        }
+                    }],
+                    "traceId": "",
+                    "spanId": ""
+                }
+            }]
+        }]
+    }]
 }
 ```
 
@@ -175,47 +175,47 @@ View the the log.proto type definition [here](https://github.com/open-telemetry/
 
 ```json
 {
-	"resourceMetrics": [{
-		"resource": {},
-		"scopeMetrics": [{
-			"scope": {
-				"name": "otelcol/hostmetricsreceiver/memory",
-				"version": "0.84.0"
-			},
-			"metrics": [{
-				"name": "system.memory.usage",
-				"description": "Bytes of memory in use.",
-				"unit": "By",
-				"sum": {
-					"dataPoints": [{
-							"attributes": [{
-								"key": "state",
-								"value": {
-									"stringValue": "used"
-								}
-							}],
-							"startTimeUnixNano": "1694171569000000000",
-							"timeUnixNano": "1694189699786689531",
-							"asInt": "1874247680"
-						},
-						{
-							"attributes": [{
-								"key": "state",
-								"value": {
-									"stringValue": "free"
-								}
-							}],
-							"startTimeUnixNano": "1694171569000000000",
-							"timeUnixNano": "1694189699786689531",
-							"asInt": "29214199808"
-						}
-					],
-					"aggregationTemporality": 2
-				}
-			}]
-		}],
-		"schemaUrl": "https://opentelemetry.io/schemas/1.9.0"
-	}]
+    "resourceMetrics": [{
+        "resource": {},
+        "scopeMetrics": [{
+            "scope": {
+                "name": "otelcol/hostmetricsreceiver/memory",
+                "version": "0.84.0"
+            },
+            "metrics": [{
+                "name": "system.memory.usage",
+                "description": "Bytes of memory in use.",
+                "unit": "By",
+                "sum": {
+                    "dataPoints": [{
+                            "attributes": [{
+                                "key": "state",
+                                "value": {
+                                    "stringValue": "used"
+                                }
+                            }],
+                            "startTimeUnixNano": "1694171569000000000",
+                            "timeUnixNano": "1694189699786689531",
+                            "asInt": "1874247680"
+                        },
+                        {
+                            "attributes": [{
+                                "key": "state",
+                                "value": {
+                                    "stringValue": "free"
+                                }
+                            }],
+                            "startTimeUnixNano": "1694171569000000000",
+                            "timeUnixNano": "1694189699786689531",
+                            "asInt": "29214199808"
+                        }
+                    ],
+                    "aggregationTemporality": 2
+                }
+            }]
+        }],
+        "schemaUrl": "https://opentelemetry.io/schemas/1.9.0"
+    }]
 } 
 ```
 
@@ -225,130 +225,130 @@ View the metric.proto type definition [here](https://github.com/open-telemetry/o
 
 ```json
 {
-	"resourceSpans": [{
-		"resource": {
-			"attributes": [{
-					"key": "telemetry.sdk.language",
-					"value": {
-						"stringValue": "python"
-					}
-				},
-				{
-					"key": "telemetry.sdk.name",
-					"value": {
-						"stringValue": "opentelemetry"
-					}
-				},
-				{
-					"key": "telemetry.sdk.version",
-					"value": {
-						"stringValue": "1.19.0"
-					}
-				},
-				{
-					"key": "telemetry.auto.version",
-					"value": {
-						"stringValue": "0.40b0"
-					}
-				},
-				{
-					"key": "service.name",
-					"value": {
-						"stringValue": "unknown_service"
-					}
-				}
-			]
-		},
-		"scopeSpans": [{
-			"scope": {
-				"name": "opentelemetry.instrumentation.flask",
-				"version": "0.40b0"
-			},
-			"spans": [{
-				"traceId": "9cb5bf738137b2248dc7b20445ec2e1c",
-				"spanId": "88079ad5c94b5b13",
-				"parentSpanId": "",
-				"name": "/roll",
-				"kind": 2,
-				"startTimeUnixNano": "1694388218052842000",
-				"endTimeUnixNano": "1694388218053415000",
-				"attributes": [{
-						"key": "http.method",
-						"value": {
-							"stringValue": "GET"
-						}
-					},
-					{
-						"key": "http.server_name",
-						"value": {
-							"stringValue": "0.0.0.0"
-						}
-					},
-					{
-						"key": "http.scheme",
-						"value": {
-							"stringValue": "http"
-						}
-					},
-					{
-						"key": "net.host.port",
-						"value": {
-							"intValue": "5001"
-						}
-					},
-					{
-						"key": "http.host",
-						"value": {
-							"stringValue": "localhost:5001"
-						}
-					},
-					{
-						"key": "http.target",
-						"value": {
-							"stringValue": "/roll"
-						}
-					},
-					{
-						"key": "net.peer.ip",
-						"value": {
-							"stringValue": "127.0.0.1"
-						}
-					},
-					{
-						"key": "http.user_agent",
-						"value": {
-							"stringValue": "curl/7.87.0"
-						}
-					},
-					{
-						"key": "net.peer.port",
-						"value": {
-							"intValue": "52365"
-						}
-					},
-					{
-						"key": "http.flavor",
-						"value": {
-							"stringValue": "1.1"
-						}
-					},
-					{
-						"key": "http.route",
-						"value": {
-							"stringValue": "/roll"
-						}
-					},
-					{
-						"key": "http.status_code",
-						"value": {
-							"intValue": "200"
-						}
-					}
-				],
-				"status": {}
-			}]
-		}]
-	}]
+    "resourceSpans": [{
+        "resource": {
+            "attributes": [{
+                    "key": "telemetry.sdk.language",
+                    "value": {
+                        "stringValue": "python"
+                    }
+                },
+                {
+                    "key": "telemetry.sdk.name",
+                    "value": {
+                        "stringValue": "opentelemetry"
+                    }
+                },
+                {
+                    "key": "telemetry.sdk.version",
+                    "value": {
+                        "stringValue": "1.19.0"
+                    }
+                },
+                {
+                    "key": "telemetry.auto.version",
+                    "value": {
+                        "stringValue": "0.40b0"
+                    }
+                },
+                {
+                    "key": "service.name",
+                    "value": {
+                        "stringValue": "unknown_service"
+                    }
+                }
+            ]
+        },
+        "scopeSpans": [{
+            "scope": {
+                "name": "opentelemetry.instrumentation.flask",
+                "version": "0.40b0"
+            },
+            "spans": [{
+                "traceId": "9cb5bf738137b2248dc7b20445ec2e1c",
+                "spanId": "88079ad5c94b5b13",
+                "parentSpanId": "",
+                "name": "/roll",
+                "kind": 2,
+                "startTimeUnixNano": "1694388218052842000",
+                "endTimeUnixNano": "1694388218053415000",
+                "attributes": [{
+                        "key": "http.method",
+                        "value": {
+                            "stringValue": "GET"
+                        }
+                    },
+                    {
+                        "key": "http.server_name",
+                        "value": {
+                            "stringValue": "0.0.0.0"
+                        }
+                    },
+                    {
+                        "key": "http.scheme",
+                        "value": {
+                            "stringValue": "http"
+                        }
+                    },
+                    {
+                        "key": "net.host.port",
+                        "value": {
+                            "intValue": "5001"
+                        }
+                    },
+                    {
+                        "key": "http.host",
+                        "value": {
+                            "stringValue": "localhost:5001"
+                        }
+                    },
+                    {
+                        "key": "http.target",
+                        "value": {
+                            "stringValue": "/roll"
+                        }
+                    },
+                    {
+                        "key": "net.peer.ip",
+                        "value": {
+                            "stringValue": "127.0.0.1"
+                        }
+                    },
+                    {
+                        "key": "http.user_agent",
+                        "value": {
+                            "stringValue": "curl/7.87.0"
+                        }
+                    },
+                    {
+                        "key": "net.peer.port",
+                        "value": {
+                            "intValue": "52365"
+                        }
+                    },
+                    {
+                        "key": "http.flavor",
+                        "value": {
+                            "stringValue": "1.1"
+                        }
+                    },
+                    {
+                        "key": "http.route",
+                        "value": {
+                            "stringValue": "/roll"
+                        }
+                    },
+                    {
+                        "key": "http.status_code",
+                        "value": {
+                            "intValue": "200"
+                        }
+                    }
+                ],
+                "status": {}
+            }]
+        }]
+    }]
 }
 ```
 
