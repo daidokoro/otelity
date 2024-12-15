@@ -35,7 +35,6 @@ processors:
     entrypoint: transform
     code: |
       def transform(event):
-        event = json.decode(event)
         <your starlark code>
         return event
 ```
@@ -103,7 +102,7 @@ You are able to use the print function or log module to print output to the Open
 ```python
 def transform(event):
     print("hello world")
-    return json.decode(event)
+    return event
 ```
 
 The print statement above would result in the following output in the Open Telemetry runtime log when opentelemetry is run in debug mode:
@@ -117,7 +116,7 @@ If you want to log messages outside of the debug mode, you can use the log modul
 ```python
 def transform(event):
     log.info("hello world")
-    return json.decode(event)
+    return event
 ```
 
 There are 3 log levels available: - `log.info` - `log.warn` - `log.error`
