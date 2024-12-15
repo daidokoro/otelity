@@ -51,7 +51,7 @@ func createLogsProcessor(
 		return nil, err
 	}
 
-	return logs.NewProcessor(ctx, set.Logger, code, nextConsumer), nil
+	return logs.NewProcessor(ctx, set.Logger, code, config.EntryPoint, nextConsumer), nil
 }
 
 func createMetricsProcessor(
@@ -74,7 +74,7 @@ func createMetricsProcessor(
 		return nil, err
 	}
 
-	return metrics.NewProcessor(ctx, set.Logger, code, nextConsumer), nil
+	return metrics.NewProcessor(ctx, set.Logger, code, config.EntryPoint, nextConsumer), nil
 }
 
 func createTracesProcessor(
@@ -97,5 +97,5 @@ func createTracesProcessor(
 		return nil, err
 	}
 
-	return traces.NewProcessor(ctx, set.Logger, code, nextConsumer), nil
+	return traces.NewProcessor(ctx, set.Logger, code, config.EntryPoint, nextConsumer), nil
 }
