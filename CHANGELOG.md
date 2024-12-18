@@ -3,7 +3,6 @@
 ### v0.1.1 / 2024-12-18
 - [Fix] `log` module in starlark processor now logs the correct log level per log function
 
-
 ### v0.1.0 / 2024-12-15 (Breaking)
 - [Feat] add `emit` funciton to starlark processor
 - [Feat] added `log` module to starlark processor
@@ -12,4 +11,4 @@
 
 ### v0.0.1 / 2024-12-07
 - [Feat] initial release
-    - starlark processor
+  - starlark processor
