@@ -125,13 +125,13 @@ func (p *Processor) loadModules() (starlark.StringDict, error) {
 	// define loggers for starklark logger moduels
 	loggers := modules.BuildLoggerModule(map[string]func(*starlark.Thread, string){
 		"info": func(t *starlark.Thread, msg string) {
-			p.logger.Warn(msg, zap.String("thread", t.Name), zap.String("source", "starlark/code"))
+			p.logger.Info(msg, zap.String("thread", t.Name), zap.String("source", "starlark/code"))
 		},
 		"warn": func(t *starlark.Thread, msg string) {
 			p.logger.Warn(msg, zap.String("thread", t.Name), zap.String("source", "starlark/code"))
 		},
 		"error": func(t *starlark.Thread, msg string) {
-			p.logger.Warn(msg, zap.String("thread", t.Name), zap.String("source", "starlark/code"))
+			p.logger.Error(msg, zap.String("thread", t.Name), zap.String("source", "starlark/code"))
 		},
 	})
 
