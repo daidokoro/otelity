@@ -9,7 +9,7 @@ import (
 
 type ModuleAlias = func(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)
 
-func EmitFn[T any](logger *zap.Logger, queue chan T, unmarshaler func([]byte) (T, error)) ModuleAlias {
+func YieldFn[T any](logger *zap.Logger, queue chan T, unmarshaler func([]byte) (T, error)) ModuleAlias {
 	return func(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var v starlark.Value
 		if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 1, &v); err != nil {
