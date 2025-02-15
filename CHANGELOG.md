@@ -1,4 +1,6 @@
 ## Otelity
+### v0.2.0 / 2024-02-15
+- [Chore][processors/starlark] - Added emit function info and examples to README
 
 ### v0.1.1 / 2024-12-18
 - [Fix] `log` module in starlark processor now logs the correct log level per log function
