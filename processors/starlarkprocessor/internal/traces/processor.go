@@ -101,8 +101,8 @@ func (p *Processor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 	}
 
 	if result.String() == "None" {
-		p.logger.Error("entrypoint function returned an empty value, passing record with no changes", zap.String("result", result.String()))
-		return p.next.ConsumeTraces(ctx, td)
+		p.logger.Debug("entrypoint function returned an empty value", zap.String("result", result.String()))
+		return nil
 	}
 
 	if td, err = p.UnmarshalTraces([]byte(result.String())); err != nil {
@@ -136,9 +136,9 @@ func (p *Processor) loadModules() (starlark.StringDict, error) {
 	})
 
 	modules := starlark.StringDict{
-		"json": jsonlib.Module,
-		"log":  loggers,
-		"emit": starlark.NewBuiltin("emit", modules.EmitFn(p.logger, p.queue, func(b []byte) (ptrace.Traces, error) {
+		modules.JSONModuleName: jsonlib.Module,
+		modules.LogsModuleName: loggers,
+		modules.EmitFnName: starlark.NewBuiltin(modules.EmitFnName, modules.YieldFn(p.logger, p.queue, func(b []byte) (ptrace.Traces, error) {
 			return p.UnmarshalTraces(b)
 		})),
 	}
