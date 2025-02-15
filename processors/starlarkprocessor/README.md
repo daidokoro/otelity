@@ -73,31 +73,106 @@ The starlark processor gives you access to the full telemetry event payload. You
 - Live, detailed, telemetry data debugging and evaluation
 - And much more
 
-## Modules, Functions and Functionality
+## Modules & Functions
 
 While similar in syntax to Python, Starlack does not have all the functionality associated with Python. This processor does not have access to Python standard libraries and the implementation found in this processor is limited further to only the following libraries and functions:
 
-- **json**
+- [emit](#emit)
+- [json](#json)
+- [log & print](#log-modules-and-print-function)
+- [re (regex) - _coming soon_](#re-regex)
 
-The JSON library allows you to encode and decode JSON strings. The use of this library is mandatory as the telemetry data is passed to the processor as a JSON string. You must decode the JSON string to a Dict before you can modify it. **You must also return a JSON decoded Dict to the processor.**
+#### emit
+
+The `emit` function is used to emit the telemetry event to the next processor in the pipeline.
+
+`emit(object: TelemetryObject)`
+
+_Example:_ Given the log event below, say we need to split this event into 2 separate logs by parsing the `stringValue` of the body, which contains a JSON string containing multiple log lines. 
+
+```json
+{
+	"resourceLogs": [{
+		"resource": {
+			"attributes": [{
+				"key": "log.file.name",
+				"value": {
+					"stringValue": "test.log"
+				}
+			}]
+		},
+		"scopeLogs": [{
+			"scope": {},
+			"logRecords": [{
+				"observedTimeUnixNano": "1694127596456358000",
+				"body": {
+					"stringValue": "{\"logs\": [\"log line one\", \"log line two\"]}",
+					"attributes": [{
+
+						"key": "app",
+						"value": {
+							"stringValue": "dev"
+						}
+					}],
+					"traceId": "",
+					"spanId": ""
+				}
+			}]
+		}]
+	}]
+}
+```
+
+
+_Split the log event into multiple log events:_
+```python
+def transform(event):
+	# get log body
+	for rlog in event['resourceLogs']:
+		for slogs in rlog['scopeLogs']:
+			for lr in slogs['logRecords']:
+				body = lr['body']['stringValue']
+				# split the body using json decode
+				decoded = json.decode(body)
+				for line in decoded['logs']:
+					lr['body']['stringValue'] = line # set body value to log line
+					emit(event) # emit modified event
+
+	# return nothing since we've emited the log in parts already
+	return None
+```
+
+**Importanat:** emited events must fit the opentelemetry proto type definition for the telemetry type. That is, the events must be valid for the next processor in the pipeline.
+
+#### json
+
+The `json` _module_ allows you to encode and decode JSON strings. Telemetry events are encoded to JSON by default when being passed to your starlark entrypoint, however, this module is useful for further manipulating nested JSON strings inside your telemetry data.
+
+The json module has 2 funcitons:
+
+
+`encode(json: object) --> string` - encodes JSON objects to strings.
 
 ```python
 # encode dict string to json string
 x = json.encode({"foo": ["bar", "baz"]})
-print(x)
+log.info(x)
 # output: {"foo":["bar","baz"]}
 ```
 
+`decode(json: string) --> dict` - decodes JSON string to dict.
 ```python
 # decode json string to dict
 x = json.decode('{"foo": ["bar", "baz"]}')
+log.info(x["foo"])
+# output: ["bar", "baz"]
 ```
 
-You can read more on the JSON library [here](https://qri.io/docs/reference/starlark-packages/encoding/json)
+You can read more on the JSON module [here](https://qri.io/docs/reference/starlark-packages/encoding/json)
 
-- **log** modules and **print** function
+#### log modules and **print** function
 
-You are able to use the print function or log module to print output to the Open Telemetry runtime log. This is useful for debugging your Starlark code as well as general logging based on evaluation of the telemetry data. For example, you may want to print a log message if certain values or behaviors are identified in the telemetry data.
+You are able to use the `print` function or `log` module to print output to the Open Telemetry runtime log. This is useful for debugging your Starlark code as well as general logging based on evaluation of the telemetry data. For example, you may want to print a log message if certain values or behaviors are identified in the telemetry data.
 
 ```python
 def transform(event):
@@ -123,7 +198,8 @@ There are 3 log levels available: - `log.info` - `log.warn` - `log.error`
 
 Again, note that the debug level is handled by the `print` function and is only available in debug mode.
 
-- **re** (regex)
+
+#### re (regex)
 
 > Support for Regular Expressions coming soon
 
@@ -388,6 +464,7 @@ processors:
   # - filter out any logs that contain the word password
   # - add an attribute to each log: language: golang
   starlark/logs:
+	entrypoint: transform
     code: |
       def transform(event):
         # edit resource attributes
@@ -413,6 +490,7 @@ processors:
   # - if there are no resources, add a resource attribute source starlark
   # - prefix each metric name with starlark
   starlark/metrics:
+	entrypoint: transform
     code: |
       def transform(event):
         print("received event", event)
@@ -440,6 +518,7 @@ processors:
   # - add resource attribute source starlark
   # - filter out any spans with http.target /roll attribute
   starlark/traces:
+	entrypoint: transform
     code: |
       def transform(event):
         for td in event['resourceSpans']:
