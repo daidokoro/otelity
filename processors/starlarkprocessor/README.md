@@ -80,7 +80,7 @@ While similar in syntax to Python, Starlack does not have all the functionality 
 - [emit](#emit)
 - [json](#json)
 - [log & print](#log-modules-and-print-function)
-- [re (regex) - _coming soon_](#re-regex)
+- [re (regex) - *coming soon*](#re-regex)
 
 #### emit
 
@@ -88,7 +88,7 @@ The `emit` function is used to emit the telemetry event to the next processor in
 
 `emit(object: TelemetryObject)`
 
-_Example:_ Given the log event below, say we need to split this event into 2 separate logs by parsing the `stringValue` of the body, which contains a JSON string containing multiple log lines. 
+*Example:* Given the log event below, say we need to split this event into 2 separate logs by parsing the `stringValue` of the body, which contains a JSON string containing multiple log lines.
 
 ```json
 {
@@ -123,8 +123,8 @@ _Example:_ Given the log event below, say we need to split this event into 2 sep
 }
 ```
 
+*Split the log event into multiple log events:*
 
-_Split the log event into multiple log events:_
 ```python
 def transform(event):
 	# get log body
@@ -146,10 +146,9 @@ def transform(event):
 
 #### json
 
-The `json` _module_ allows you to encode and decode JSON strings. Telemetry events are encoded to JSON by default when being passed to your starlark entrypoint, however, this module is useful for further manipulating nested JSON strings inside your telemetry data.
+The `json` *module* allows you to encode and decode JSON strings. Telemetry events are encoded to JSON by default when being passed to your starlark entrypoint, however, this module is useful for further manipulating nested JSON strings inside your telemetry data.
 
 The json module has 2 funcitons:
-
 
 `encode(json: object) --> string` - encodes JSON objects to strings.
 
@@ -161,6 +160,7 @@ log.info(x)
 ```
 
 `decode(json: string) --> dict` - decodes JSON string to dict.
+
 ```python
 # decode json string to dict
 x = json.decode('{"foo": ["bar", "baz"]}')
@@ -197,7 +197,6 @@ def transform(event):
 There are 3 log levels available: - `log.info` - `log.warn` - `log.error`
 
 Again, note that the debug level is handled by the `print` function and is only available in debug mode.
-
 
 #### re (regex)
 
