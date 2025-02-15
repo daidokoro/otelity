@@ -1,0 +1,97 @@
+name: release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+env:
+  WORK_DIR: $(shell pwd)
+  GO_VERSION: 1.22.x
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        platform:
+          - name: linux-amd64
+            arch: amd64
+            os: linux
+            pacakge: otelity-linux-amd64-${TAG}-${OTEL_VERSION}.tar.gz
+
+          - name: darwin-amd64
+            arch: amd64
+            os: darwin
+            package: otelity-darwin-amd64-${TAG}-${OTEL_VERSION}.tar.gz
+
+          - name: darwin-arm64
+            arch: arm64
+            os: darwin
+            package: otelity-darwin-arm64-${TAG}-${OTEL_VERSION}.tar.gz
+      
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - run: sudo snap install yq
+
+      - name: extract tag name from github.ref
+        run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
+      # install golang
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: download contrib manifest
+        run: make download-contrib-manifest CONTRIB_MANIFEST_DEST=contrib/manifest.yaml
+
+      # get otel version from contrib manifest
+      - name: get otel version
+        run: |
+          OTEL_VERSION=$(yq e '.dist.version' $(WORK_DIR)/contrib/manifest.yaml | sed 's/-dev//')
+          echo "OTEL_VERSION=${OTEL_VERSION}" >> $GITHUB_ENV
+          echo "otel_version=${OTEL_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: install builder
+        run: go install -v go.opentelemetry.io/collector/cmd/builder@v${OTEL_VERSION}
+
+      - name: Build
+        run: make build ARCH=${{ matrix.platform.arch }} OS=${{ matrix.platform.os }}
+
+      - name: create tar
+        run: |
+          tar -czvf ${{ matrix.platform.package }} -C $(WORK_DIR)/cmd/otelity .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform.package }}
+          path: target/${{ matrix.platform.name }}/release/${{ matrix.platform.package }}
+
+  create_release:
+    runs-on: ubuntu-latest
+    name: create release
+    needs:
+      - build
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+      - name: extract tag name from github.ref
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}+otel-${{ needs.build.outputs.otel_version }}
+          echo "TAG=${TAG}" >> $GITHUB_ENV
+
+      - name: create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ env.TAG }}
+        run: |
+          set -xv
+          gh release create ${{ env.TAG }} \
+            --title "Release ${{ env.TAG }}" \
+            --notes "$(awk '/## \[${{ env.TAG }}\]/{flag=1;next}/## \[/{flag=0}flag' CHANGELOG.md)" \
+            --draft
