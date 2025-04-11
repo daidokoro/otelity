@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/daidokoro/otelity/processors/starlarkprocessor/internal/modules"
+	"github.com/daidokoro/otelity/processors/starlarkprocessor/internal/modules/otlplog"
 	"github.com/qri-io/starlib/re"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
@@ -35,23 +36,22 @@ func NewProcessor(ctx context.Context, logger *zap.Logger,
 type Processor struct {
 	plog.JSONMarshaler
 	plog.JSONUnmarshaler
-	logger         *zap.Logger
-	code           string
-	entry          string
-	queue          chan plog.Logs
-	thread         *starlark.Thread
-	transformFn    starlark.Value
-	convertEventFn starlark.Value
-	next           consumer.Logs
+	logger      *zap.Logger
+	code        string
+	entry       string
+	queue       chan plog.Logs
+	thread      *starlark.Thread
+	transformFn starlark.Value
+	next        consumer.Logs
 }
 
 func (p *Processor) Start(ctx context.Context, _ component.Host) error {
-	modules, err := p.loadModules()
+	mods, err := p.loadModules()
 	if err != nil {
 		return fmt.Errorf("failed to load starlark modules; %q", err)
 	}
 
-	globals, err := starlark.ExecFileOptions(&syntax.FileOptions{}, p.thread, "", p.code, modules)
+	globals, err := starlark.ExecFileOptions(&syntax.FileOptions{}, p.thread, "", p.code, mods)
 	if err != nil {
 		return err
 	}
@@ -60,10 +60,6 @@ func (p *Processor) Start(ctx context.Context, _ component.Host) error {
 	var ok bool
 	if p.transformFn, ok = globals[p.entry]; !ok {
 		return fmt.Errorf("starlark: no '%s' function defined in script for entrypoint", p.entry)
-	}
-
-	if p.convertEventFn, ok = jsonlib.Module.Members["decode"]; !ok {
-		return fmt.Errorf("starlark: no 'json.decode' function defined in env")
 	}
 
 	go func() {
@@ -86,8 +82,7 @@ func (p *Processor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 		return err
 	}
 
-	// convert to starlark value
-	event, err := starlark.Call(p.thread, p.convertEventFn, starlark.Tuple{starlark.String(string(b))}, nil)
+	event, err := modules.OTLPTypeFromBytes(&otlplog.OTLPLog{}, p.thread, b)
 	if err != nil {
 		return fmt.Errorf("error converting telemetry event to starlark: %w", err)
 	}

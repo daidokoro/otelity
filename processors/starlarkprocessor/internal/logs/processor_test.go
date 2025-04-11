@@ -92,12 +92,24 @@ func TestLogConsumer(t *testing.T) {
 			expectStartError: errors.New("starlark: no '' function defined in script for entrypoint"),
 		},
 		{
+			name:  "otlp log module",
+			event: testlogevent,
+			code: heredoc.Doc(`
+				def run(event):
+					e = otlp.log(event)
+					e.resource_logs.range(lambda x: x)
+					return event
+				`),
+			entry: "run",
+			next:  &fakeLogConsumer{t: t, expected: testlogevent},
+		},
+		{
 			name:  "regex transform",
 			event: testlogevent,
 			entry: "transform",
 			code: heredoc.Doc(`
 								def transform(event):
-									val = event['resourceLogs'][0]['scopeLogs'][0]['logRecords'][0]['body']['stringValue']
+									val = event['resourceLogs'][0]['scopeLogs'][0]['ogRecords'][0]['body']['stringValue']
 									val = re.sub('{.*}', 'NONE', val)
 									start, end = re.search('[A-Z]{4}', val)
 
