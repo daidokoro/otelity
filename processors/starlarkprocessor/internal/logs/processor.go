@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/daidokoro/otelity/processors/starlarkprocessor/internal/modules"
-	"github.com/daidokoro/otelity/processors/starlarkprocessor/internal/modules/otlplog"
+	otlptype "github.com/daidokoro/otelity/processors/starlarkprocessor/internal/modules/otlptypes/logs"
 	"github.com/qri-io/starlib/re"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
@@ -82,7 +82,7 @@ func (p *Processor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 		return err
 	}
 
-	event, err := modules.OTLPTypeFromBytes(&otlplog.OTLPLog{}, p.thread, b)
+	event, err := modules.OTLPTypeFromBytes(&otlptype.OTLPLog{}, p.thread, b)
 	if err != nil {
 		return fmt.Errorf("error converting telemetry event to starlark: %w", err)
 	}
