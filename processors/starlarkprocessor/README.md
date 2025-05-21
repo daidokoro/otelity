@@ -210,61 +210,74 @@ The Starlark processor provides direct access to and manipulation of OpenTelemet
 
 These types provide methods to access and modify their respective fields and attributes, offering a powerful way to enrich, filter, or transform your telemetry data.
 
+### Common OTLP Object Operations
+
+This section describes common operations available for Starlark objects that represent OTLP data structures. Many OTLP entities are represented as Starlark dictionaries or lists of dictionaries, and dedicated helper types provide additional functionality.
+
+#### List Operations
+Starlark representations of OTLP lists (e.g., a list of `ResourceLogs`, `ScopeLogs`, `LogRecord`, `Attribute`, `DataPoint`, or `Span` objects) support the following methods:
+
+*   `filter(lambda)`: Returns a new list containing only items for which the lambda function returns `True`.
+    *Example*: `log_event.resourceLogs.filter(lambda rlog: len(rlog.scopeLogs) > 0)`
+*   `apply(lambda)`: Calls the lambda function for each item in the list. The original list can be modified in place if the lambda modifies the items.
+    *Example*: `slog.logRecords.apply(lambda lr: lr.attributes.set("processed", True, type_string="boolValue"))`
+*   `range(lambda)`: Returns a new list by applying the lambda function to each item in the original list. This is similar to Python's `map` function.
+    *Example*: `lr.attributes.range(lambda attr: attr.get("key"))`
+
+#### Attribute Operations
+Lists of OTLP attributes (commonly found in fields like `resource.attributes`, `logRecord.attributes`, `span.attributes`, `metric.attributes`, or `dataPoint.attributes`) provide helper methods for easy manipulation. These attribute lists are Starlark list objects where each item is a dictionary representing a single attribute (e.g., `{"key": "myKey", "value": {"stringValue": "myValue"}}`). The following methods are available on objects that wrap these attribute lists:
+
+*   `get(key_string)`: Retrieves the value dictionary of an attribute by its key. Returns `None` if not found.
+    *Example*: `span.attributes.get("http.method")` would return something like `{"stringValue": "GET"}`.
+*   `set(key_string, value, type_string="stringValue")`: Sets the value of an attribute. If the key exists, its value is updated. If not, a new attribute is added to the list. The `type_string` argument is optional and defaults to `"stringValue"`. Other common types are `"boolValue"`, `"doubleValue"`, `"intValue"`.
+    *Example*: `logRecord.attributes.set("new_attr", "new_value")`
+    *Example*: `resource.attributes.set("retention_days", 30, type_string="intValue")`
+
+#### Dictionary Operations
+Many OTLP types, such as `OTLPLog`, `ResourceLogs`, `LogRecord`, `Metric`, `Span`, etc., are represented as Starlark dictionaries or objects that behave like dictionaries. This means you can typically access their fields using standard dictionary key access or dot notation:
+
+*   `event['fieldName']`
+*   `event.fieldName`
+
+Standard Starlark dictionary methods should also be available where applicable. Refer to the Starlark documentation for more details on dictionary operations. When a field itself is a complex type (like another dictionary or a list), you can chain access, e.g., `log_event.resourceLogs[0].resource.attributes`.
+The specific fields available for each type are detailed in their respective sections under Logs, Metrics, and Traces.
+
 ### Logs
 
 The `otlp.log()` function provides access to log data. You pass the raw log event (which is a Starlark `dict`) to this function to get an `OTLPLog` object.
 
 **Types:**
 
-*   **`OTLPLog`**: Represents the top-level log structure.
+*   **`OTLPLog`**: A Dictionary-like object representing the top-level log structure.
     *   **Attributes**:
-        *   `resourceLogs`: A list of `ResourceLogs` objects. Access as `log_event.resourceLogs`.
-    *   **Methods**: This object itself is based on a Starlark `dict`, so standard dictionary methods can be used.
+        *   `resourceLogs`: A List-like object of `ResourceLogs`. Supports operations described in "#### List Operations". Access as `log_event.resourceLogs`.
+    *   Supports standard dictionary operations (see "#### Dictionary Operations").
 
-*   **`ResourceLogs`**: Represents logs from a specific resource.
+*   **`ResourceLogs`**: A Dictionary-like object representing logs from a specific resource.
     *   **Attributes**:
-        *   `resource`: An `otlp.Resource` object representing the source of the logs. Access as `rlog.resource`.
-        *   `scopeLogs`: A list of `ScopeLogs` objects. Access as `rlog.scopeLogs`.
-    *   **Methods**: This object itself is based on a Starlark `dict`, so standard dictionary methods can be used.
+        *   `resource`: An `otlp.Resource` object.
+        *   `scopeLogs`: A List-like object of `ScopeLogs`. Supports operations described in "#### List Operations". Access as `rlog.scopeLogs`.
+    *   Supports standard dictionary operations (see "#### Dictionary Operations").
 
-*   **`otlp.Resource`**: Represents a resource.
+*   **`otlp.Resource`**: A Dictionary-like object representing a resource.
     *   **Attributes**:
-        *   `attributes`: A list of `Attribute` objects. Access as `res.attributes`.
-    *   **Methods**: This object itself is based on a Starlark `dict`, so standard dictionary methods can be used.
+        *   `attributes`: An attribute list. Supports operations described in "#### Attribute Operations". Access as `res.attributes`.
+    *   Supports standard dictionary operations (see "#### Dictionary Operations").
 
-*   **`ScopeLogs`**: Represents logs from a specific scope (e.g., an instrumentation library).
+*   **`ScopeLogs`**: A Dictionary-like object representing logs from a specific scope (e.g., an instrumentation library).
     *   **Attributes**:
         *   `scope`: A Starlark `dict` representing the scope. Access as `slog.scope`.
-        *   `logRecords`: A list of `LogRecord` objects. Access as `slog.logRecords`.
-    *   **Methods**: This object itself is based on a Starlark `dict`, so standard dictionary methods can be used.
+        *   `logRecords`: A List-like object of `LogRecord`. Supports operations described in "#### List Operations". Access as `slog.logRecords`.
+    *   Supports standard dictionary operations (see "#### Dictionary Operations").
 
-*   **`LogRecord`**: Represents an individual log entry.
+*   **`LogRecord`**: A Dictionary-like object representing an individual log entry.
     *   **Attributes**:
-        *   `observedTimeUnixNano`: (String) The time the log was observed. Access as `lr.observedTimeUnixNano`.
-        *   `body`: (Any) The body of the log record. Access as `lr.body`.
-        *   `attributes`: A list of `Attribute` objects. Access as `lr.attributes`.
-        *   `traceId`: (String) The Trace ID associated with the log. Access as `lr.traceId`.
-        *   `spanId`: (String) The Span ID associated with the log. Access as `lr.spanId`.
-    *   **Methods**: This object itself is based on a Starlark `dict`, so standard dictionary methods can be used.
-
-*   **`Attribute`**: Represents a key-value pair. This is a list-like object in Starlark, where each item in the list is a `dict` with "key" and "value". The `value` itself is a `dict` indicating the type (e.g. `{"stringValue": "example"}`).
-    *   **Methods**:
-        *   `get(key_string)`: Retrieves the value of an attribute by its key. Returns `None` if not found.
-            *Example*: `attrs.get("http.method")`
-        *   `set(key_string, value, type_string="stringValue")`: Sets the value of an attribute. If the key exists, it's updated. If not, a new attribute is added. The `type_string` argument is optional and defaults to `"stringValue"`. Other possible types are `"boolValue"`, `"doubleValue"`, `"intValue"`.
-            *Example*: `attrs.set("new_attr", "new_value")`
-            *Example*: `attrs.set("count", 10, type_string="intValue")`
-
-**List Operations:**
-
-Lists of `ResourceLogs`, `ScopeLogs`, `LogRecord`, and `Attribute` support the following methods:
-
-*   `filter(lambda)`: Returns a new list containing only items for which the lambda function returns `True`.
-    *Example*: `event.resourceLogs.filter(lambda rlog: len(rlog.scopeLogs) > 0)`
-*   `apply(lambda)`: Calls the lambda function for each item in the list. The original list is modified in place if the lambda modifies the items.
-    *Example*: `slog.logRecords.apply(lambda lr: lr.attributes.set("processed", True, type_string="boolValue"))`
-*   `range(lambda)`: Returns a new list by applying the lambda function to each item in the original list. This is similar to Python's `map` function.
-    *Example*: `lr.attributes.range(lambda attr: attr.get("key"))`
+        *   `observedTimeUnixNano`: (String) The time the log was observed.
+        *   `body`: (Any) The body of the log record.
+        *   `attributes`: An attribute list. Supports operations described in "#### Attribute Operations". Access as `lr.attributes`.
+        *   `traceId`: (String) The Trace ID associated with the log.
+        *   `spanId`: (String) The Span ID associated with the log.
+    *   Supports standard dictionary operations (see "#### Dictionary Operations").
 
 **Example:**
 
@@ -292,50 +305,40 @@ The `otlp.metric()` function (assumed) provides access to metric data. You would
 
 **Assumed Types:**
 
-*   **`OTLPMetric`**: Represents the top-level metric structure.
+*   **`OTLPMetric`**: A Dictionary-like object representing the top-level metric structure.
     *   **Attributes**:
-        *   `resourceMetrics`: A list of `ResourceMetrics` objects.
-    *   **Methods**: Based on Starlark `dict`.
+        *   `resourceMetrics`: A List-like object of `ResourceMetrics`. Supports operations described in "#### List Operations".
+    *   Supports standard dictionary operations (see "#### Dictionary Operations").
 
-*   **`ResourceMetrics`**: Represents metrics from a specific resource.
+*   **`ResourceMetrics`**: A Dictionary-like object representing metrics from a specific resource.
     *   **Attributes**:
-        *   `resource`: An `otlp.Resource` object.
-        *   `scopeMetrics`: A list of `ScopeMetrics` objects.
-    *   **Methods**: Based on Starlark `dict`.
+        *   `resource`: An `otlp.Resource` object (see Logs section for details).
+        *   `scopeMetrics`: A List-like object of `ScopeMetrics`. Supports operations described in "#### List Operations".
+    *   Supports standard dictionary operations (see "#### Dictionary Operations").
 
-*   **`otlp.Resource`**: (Shared with Logs) Represents a resource.
-    *   **Attributes**:
-        *   `attributes`: A list of `Attribute` objects.
-    *   **Methods**: Based on Starlark `dict`. (See Logs section for `Attribute` methods `get` and `set`)
+*   **`otlp.Resource`**: (Shared with Logs) A Dictionary-like object. See Logs section for details. Its `attributes` field is an attribute list supporting Attribute Operations.
 
-*   **`ScopeMetrics`**: Represents metrics from a specific scope.
+*   **`ScopeMetrics`**: A Dictionary-like object representing metrics from a specific scope.
     *   **Attributes**:
         *   `scope`: A Starlark `dict` representing the scope.
-        *   `metrics`: A list of `Metric` objects.
-    *   **Methods**: Based on Starlark `dict`.
+        *   `metrics`: A List-like object of `Metric`. Supports operations described in "#### List Operations".
+    *   Supports standard dictionary operations (see "#### Dictionary Operations").
 
-*   **`Metric`**: Represents an individual metric. This can be a Sum, Gauge, Histogram, etc. The exact fields will depend on the metric type.
+*   **`Metric`**: A Dictionary-like object representing an individual metric. This can be a Sum, Gauge, Histogram, etc.
     *   **Common Attributes**:
         *   `name`: (String) The name of the metric.
         *   `description`: (String) The description of the metric.
         *   `unit`: (String) The unit of the metric.
-        *   `sum`, `gauge`, `histogram`, `summary`: (Object) One of these will be present depending on the metric type, containing the data points.
-    *   **Methods**: Based on Starlark `dict`.
+        *   `sum`, `gauge`, `histogram`, `summary`: (Object) One of these will be present depending on the metric type, containing the data points. Each of these data point types (e.g. `sum.dataPoints`) is a List-like object supporting List Operations.
+    *   Supports standard dictionary operations (see "#### Dictionary Operations").
 
-*   **`DataPoint` (within Sum, Gauge, etc.)**: Represents a single data point.
+*   **`DataPoint` (within Sum, Gauge, etc.)**: A Dictionary-like object representing a single data point.
     *   **Common Attributes**:
-        *   `attributes`: A list of `Attribute` objects.
+        *   `attributes`: An attribute list. Supports operations described in "#### Attribute Operations".
         *   `startTimeUnixNano`: (String) The start time of the metric.
         *   `timeUnixNano`: (String) The time the metric was recorded.
-        *   `asInt`, `asDouble`: (String/Int/Float) The value of the data point.
-    *   **Methods**: Based on Starlark `dict`.
-
-*   **`Attribute`**: (Shared with Logs) Represents a key-value pair.
-    *   **Methods**: `get(key_string)`, `set(key_string, value, type_string="stringValue")`. (See Logs section for details).
-
-**List Operations:**
-
-Lists of `ResourceMetrics`, `ScopeMetrics`, `Metric`, `DataPoint`, and `Attribute` are assumed to support the same `filter`, `apply`, and `range` methods as described in the Logs section.
+        *   `asInt`, `asDouble`: (String/Int/Float) The value of the data point. (Note: OTLP defines specific types like `as_int`, `as_double` - exact Starlark field names might vary).
+    *   Supports standard dictionary operations (see "#### Dictionary Operations").
 
 **Example (Conceptual):**
 
@@ -365,29 +368,26 @@ The `otlp.trace()` function (assumed) provides access to trace data. You would p
 
 **Assumed Types:**
 
-*   **`OTLPTrace`**: Represents the top-level trace structure.
+*   **`OTLPTrace`**: A Dictionary-like object representing the top-level trace structure.
     *   **Attributes**:
-        *   `resourceSpans`: A list of `ResourceSpans` objects.
-    *   **Methods**: Based on Starlark `dict`.
+        *   `resourceSpans`: A List-like object of `ResourceSpans`. Supports operations described in "#### List Operations".
+    *   Supports standard dictionary operations (see "#### Dictionary Operations").
 
-*   **`ResourceSpans`**: Represents spans from a specific resource.
+*   **`ResourceSpans`**: A Dictionary-like object representing spans from a specific resource.
     *   **Attributes**:
-        *   `resource`: An `otlp.Resource` object.
-        *   `scopeSpans`: A list of `ScopeSpans` objects.
-    *   **Methods**: Based on Starlark `dict`.
+        *   `resource`: An `otlp.Resource` object (see Logs section for details).
+        *   `scopeSpans`: A List-like object of `ScopeSpans`. Supports operations described in "#### List Operations".
+    *   Supports standard dictionary operations (see "#### Dictionary Operations").
 
-*   **`otlp.Resource`**: (Shared with Logs) Represents a resource.
-    *   **Attributes**:
-        *   `attributes`: A list of `Attribute` objects.
-    *   **Methods**: Based on Starlark `dict`. (See Logs section for `Attribute` methods `get` and `set`)
+*   **`otlp.Resource`**: (Shared with Logs) A Dictionary-like object. See Logs section for details. Its `attributes` field is an attribute list supporting Attribute Operations.
 
-*   **`ScopeSpans`**: Represents spans from a specific scope.
+*   **`ScopeSpans`**: A Dictionary-like object representing spans from a specific scope.
     *   **Attributes**:
         *   `scope`: A Starlark `dict` representing the scope.
-        *   `spans`: A list of `Span` objects.
-    *   **Methods**: Based on Starlark `dict`.
+        *   `spans`: A List-like object of `Span`. Supports operations described in "#### List Operations".
+    *   Supports standard dictionary operations (see "#### Dictionary Operations").
 
-*   **`Span`**: Represents an individual span.
+*   **`Span`**: A Dictionary-like object representing an individual span.
     *   **Common Attributes**:
         *   `traceId`: (String) The Trace ID.
         *   `spanId`: (String) The Span ID.
@@ -396,16 +396,9 @@ The `otlp.trace()` function (assumed) provides access to trace data. You would p
         *   `kind`: (Integer) The kind of span (e.g., client, server).
         *   `startTimeUnixNano`: (String) The start time of the span.
         *   `endTimeUnixNano`: (String) The end time of the span.
-        *   `attributes`: A list of `Attribute` objects.
+        *   `attributes`: An attribute list. Supports operations described in "#### Attribute Operations".
         *   `status`: (Object) An object indicating the status of the span (e.g., `{"code": 0}`).
-    *   **Methods**: Based on Starlark `dict`.
-
-*   **`Attribute`**: (Shared with Logs) Represents a key-value pair.
-    *   **Methods**: `get(key_string)`, `set(key_string, value, type_string="stringValue")`. (See Logs section for details).
-
-**List Operations:**
-
-Lists of `ResourceSpans`, `ScopeSpans`, `Span`, and `Attribute` are assumed to support the same `filter`, `apply`, and `range` methods as described in the Logs section.
+    *   Supports standard dictionary operations (see "#### Dictionary Operations").
 
 **Example (Conceptual):**
 
