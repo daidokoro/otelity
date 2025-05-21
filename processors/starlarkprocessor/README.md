@@ -204,6 +204,228 @@ Again, note that the debug level is handled by the `print` function and is only 
 
 Note that you can define your own functions within your Starlark code, and call them as required, however, there must be at least one entrypoint function that accepts a single argument telemetry event argument and returns the modified event.
 
+## OTLP Types
+
+The Starlark processor provides direct access to and manipulation of OpenTelemetry Protocol (OTLP) data structures within your Starlark scripts. This allows for fine-grained control over telemetry data. You can interact with Logs, Metrics, and Traces using dedicated Starlark types that mirror the OTLP structure.
+
+These types provide methods to access and modify their respective fields and attributes, offering a powerful way to enrich, filter, or transform your telemetry data.
+
+### Logs
+
+The `otlp.log()` function provides access to log data. You pass the raw log event (which is a Starlark `dict`) to this function to get an `OTLPLog` object.
+
+**Types:**
+
+*   **`OTLPLog`**: Represents the top-level log structure.
+    *   **Attributes**:
+        *   `resourceLogs`: A list of `ResourceLogs` objects. Access as `log_event.resourceLogs`.
+    *   **Methods**: This object itself is based on a Starlark `dict`, so standard dictionary methods can be used.
+
+*   **`ResourceLogs`**: Represents logs from a specific resource.
+    *   **Attributes**:
+        *   `resource`: An `otlp.Resource` object representing the source of the logs. Access as `rlog.resource`.
+        *   `scopeLogs`: A list of `ScopeLogs` objects. Access as `rlog.scopeLogs`.
+    *   **Methods**: This object itself is based on a Starlark `dict`, so standard dictionary methods can be used.
+
+*   **`otlp.Resource`**: Represents a resource.
+    *   **Attributes**:
+        *   `attributes`: A list of `Attribute` objects. Access as `res.attributes`.
+    *   **Methods**: This object itself is based on a Starlark `dict`, so standard dictionary methods can be used.
+
+*   **`ScopeLogs`**: Represents logs from a specific scope (e.g., an instrumentation library).
+    *   **Attributes**:
+        *   `scope`: A Starlark `dict` representing the scope. Access as `slog.scope`.
+        *   `logRecords`: A list of `LogRecord` objects. Access as `slog.logRecords`.
+    *   **Methods**: This object itself is based on a Starlark `dict`, so standard dictionary methods can be used.
+
+*   **`LogRecord`**: Represents an individual log entry.
+    *   **Attributes**:
+        *   `observedTimeUnixNano`: (String) The time the log was observed. Access as `lr.observedTimeUnixNano`.
+        *   `body`: (Any) The body of the log record. Access as `lr.body`.
+        *   `attributes`: A list of `Attribute` objects. Access as `lr.attributes`.
+        *   `traceId`: (String) The Trace ID associated with the log. Access as `lr.traceId`.
+        *   `spanId`: (String) The Span ID associated with the log. Access as `lr.spanId`.
+    *   **Methods**: This object itself is based on a Starlark `dict`, so standard dictionary methods can be used.
+
+*   **`Attribute`**: Represents a key-value pair. This is a list-like object in Starlark, where each item in the list is a `dict` with "key" and "value". The `value` itself is a `dict` indicating the type (e.g. `{"stringValue": "example"}`).
+    *   **Methods**:
+        *   `get(key_string)`: Retrieves the value of an attribute by its key. Returns `None` if not found.
+            *Example*: `attrs.get("http.method")`
+        *   `set(key_string, value, type_string="stringValue")`: Sets the value of an attribute. If the key exists, it's updated. If not, a new attribute is added. The `type_string` argument is optional and defaults to `"stringValue"`. Other possible types are `"boolValue"`, `"doubleValue"`, `"intValue"`.
+            *Example*: `attrs.set("new_attr", "new_value")`
+            *Example*: `attrs.set("count", 10, type_string="intValue")`
+
+**List Operations:**
+
+Lists of `ResourceLogs`, `ScopeLogs`, `LogRecord`, and `Attribute` support the following methods:
+
+*   `filter(lambda)`: Returns a new list containing only items for which the lambda function returns `True`.
+    *Example*: `event.resourceLogs.filter(lambda rlog: len(rlog.scopeLogs) > 0)`
+*   `apply(lambda)`: Calls the lambda function for each item in the list. The original list is modified in place if the lambda modifies the items.
+    *Example*: `slog.logRecords.apply(lambda lr: lr.attributes.set("processed", True, type_string="boolValue"))`
+*   `range(lambda)`: Returns a new list by applying the lambda function to each item in the original list. This is similar to Python's `map` function.
+    *Example*: `lr.attributes.range(lambda attr: attr.get("key"))`
+
+**Example:**
+
+```python
+def transform(event_dict):
+    log_event = otlp.log(event_dict) # Convert raw dict to OTLPLog object
+
+    for rlog in log_event.resourceLogs:
+        rlog.resource.attributes.set("custom_resource_attr", "added_by_starlark")
+        for slog in rlog.scopeLogs:
+            # Filter out log records that don't have a body
+            slog.logRecords = slog.logRecords.filter(lambda lr: lr.body != None)
+            for lr in slog.logRecords:
+                lr.attributes.set("log_processed", True, "boolValue")
+                if lr.attributes.get("app") == "my_app":
+                    lr.body = "Processed: " + lr.body.stringValue # Assuming body is stringValue
+    return event_dict # Return the modified dict
+```
+
+### Metrics
+
+**Note:** The Starlark OTLP Metrics types are designed to mirror common OTLP metric structures. The exact fields and methods might vary based on the specific implementation. It's assumed that an `otlp.metric()` function exists, similar to `otlp.log()`, for converting a raw metric event dictionary into an `OTLPMetric` object.
+
+The `otlp.metric()` function (assumed) provides access to metric data. You would pass the raw metric event (a Starlark `dict`) to this function to get an `OTLPMetric` object.
+
+**Assumed Types:**
+
+*   **`OTLPMetric`**: Represents the top-level metric structure.
+    *   **Attributes**:
+        *   `resourceMetrics`: A list of `ResourceMetrics` objects.
+    *   **Methods**: Based on Starlark `dict`.
+
+*   **`ResourceMetrics`**: Represents metrics from a specific resource.
+    *   **Attributes**:
+        *   `resource`: An `otlp.Resource` object.
+        *   `scopeMetrics`: A list of `ScopeMetrics` objects.
+    *   **Methods**: Based on Starlark `dict`.
+
+*   **`otlp.Resource`**: (Shared with Logs) Represents a resource.
+    *   **Attributes**:
+        *   `attributes`: A list of `Attribute` objects.
+    *   **Methods**: Based on Starlark `dict`. (See Logs section for `Attribute` methods `get` and `set`)
+
+*   **`ScopeMetrics`**: Represents metrics from a specific scope.
+    *   **Attributes**:
+        *   `scope`: A Starlark `dict` representing the scope.
+        *   `metrics`: A list of `Metric` objects.
+    *   **Methods**: Based on Starlark `dict`.
+
+*   **`Metric`**: Represents an individual metric. This can be a Sum, Gauge, Histogram, etc. The exact fields will depend on the metric type.
+    *   **Common Attributes**:
+        *   `name`: (String) The name of the metric.
+        *   `description`: (String) The description of the metric.
+        *   `unit`: (String) The unit of the metric.
+        *   `sum`, `gauge`, `histogram`, `summary`: (Object) One of these will be present depending on the metric type, containing the data points.
+    *   **Methods**: Based on Starlark `dict`.
+
+*   **`DataPoint` (within Sum, Gauge, etc.)**: Represents a single data point.
+    *   **Common Attributes**:
+        *   `attributes`: A list of `Attribute` objects.
+        *   `startTimeUnixNano`: (String) The start time of the metric.
+        *   `timeUnixNano`: (String) The time the metric was recorded.
+        *   `asInt`, `asDouble`: (String/Int/Float) The value of the data point.
+    *   **Methods**: Based on Starlark `dict`.
+
+*   **`Attribute`**: (Shared with Logs) Represents a key-value pair.
+    *   **Methods**: `get(key_string)`, `set(key_string, value, type_string="stringValue")`. (See Logs section for details).
+
+**List Operations:**
+
+Lists of `ResourceMetrics`, `ScopeMetrics`, `Metric`, `DataPoint`, and `Attribute` are assumed to support the same `filter`, `apply`, and `range` methods as described in the Logs section.
+
+**Example (Conceptual):**
+
+```python
+def transform(event_dict):
+    # Assuming otlp.metric() function exists
+    metric_event = otlp.metric(event_dict) 
+
+    for rmetric in metric_event.resourceMetrics:
+        rmetric.resource.attributes.set("metric_source", "starlark_processor")
+        for smetric in rmetric.scopeMetrics:
+            for m in smetric.metrics:
+                if m.name == "system.cpu.time":
+                    m.name = "starlark.system.cpu.time" # Rename metric
+                    # Iterate over data points (structure depends on metric type)
+                    if hasattr(m, "sum") and m.sum != None:
+                        for dp in m.sum.dataPoints: # Assuming dataPoints is a list
+                            dp.attributes.set("processed_by_starlark", True, "boolValue")
+    return event_dict
+```
+
+### Traces
+
+**Note:** The Starlark OTLP Traces types are designed to mirror common OTLP trace structures. The exact fields and methods might vary based on the specific implementation. It's assumed that an `otlp.trace()` function exists, similar to `otlp.log()`, for converting a raw trace event dictionary into an `OTLPTrace` object.
+
+The `otlp.trace()` function (assumed) provides access to trace data. You would pass the raw trace event (a Starlark `dict`) to this function to get an `OTLPTrace` object.
+
+**Assumed Types:**
+
+*   **`OTLPTrace`**: Represents the top-level trace structure.
+    *   **Attributes**:
+        *   `resourceSpans`: A list of `ResourceSpans` objects.
+    *   **Methods**: Based on Starlark `dict`.
+
+*   **`ResourceSpans`**: Represents spans from a specific resource.
+    *   **Attributes**:
+        *   `resource`: An `otlp.Resource` object.
+        *   `scopeSpans`: A list of `ScopeSpans` objects.
+    *   **Methods**: Based on Starlark `dict`.
+
+*   **`otlp.Resource`**: (Shared with Logs) Represents a resource.
+    *   **Attributes**:
+        *   `attributes`: A list of `Attribute` objects.
+    *   **Methods**: Based on Starlark `dict`. (See Logs section for `Attribute` methods `get` and `set`)
+
+*   **`ScopeSpans`**: Represents spans from a specific scope.
+    *   **Attributes**:
+        *   `scope`: A Starlark `dict` representing the scope.
+        *   `spans`: A list of `Span` objects.
+    *   **Methods**: Based on Starlark `dict`.
+
+*   **`Span`**: Represents an individual span.
+    *   **Common Attributes**:
+        *   `traceId`: (String) The Trace ID.
+        *   `spanId`: (String) The Span ID.
+        *   `parentSpanId`: (String) The Parent Span ID.
+        *   `name`: (String) The name of the span.
+        *   `kind`: (Integer) The kind of span (e.g., client, server).
+        *   `startTimeUnixNano`: (String) The start time of the span.
+        *   `endTimeUnixNano`: (String) The end time of the span.
+        *   `attributes`: A list of `Attribute` objects.
+        *   `status`: (Object) An object indicating the status of the span (e.g., `{"code": 0}`).
+    *   **Methods**: Based on Starlark `dict`.
+
+*   **`Attribute`**: (Shared with Logs) Represents a key-value pair.
+    *   **Methods**: `get(key_string)`, `set(key_string, value, type_string="stringValue")`. (See Logs section for details).
+
+**List Operations:**
+
+Lists of `ResourceSpans`, `ScopeSpans`, `Span`, and `Attribute` are assumed to support the same `filter`, `apply`, and `range` methods as described in the Logs section.
+
+**Example (Conceptual):**
+
+```python
+def transform(event_dict):
+    # Assuming otlp.trace() function exists
+    trace_event = otlp.trace(event_dict)
+
+    for rspan in trace_event.resourceSpans:
+        rspan.resource.attributes.set("trace_transformed_by", "starlark")
+        for sspan in rspan.scopeSpans:
+            # Filter out spans that are not server spans (kind = 2)
+            sspan.spans = sspan.spans.filter(lambda sp: sp.kind == 2) # Assuming kind is an attribute
+            for span in sspan.spans:
+                if span.attributes.get("http.target") == "/old/path":
+                    span.attributes.set("http.target", "/new/path")
+                span.name = "StarlarkProcessed-" + span.name
+    return event_dict
+```
+
 ## Examples
 
 This section contains examples of the event payloads that are sent to the starlark processor from each telemetry type. These examples can help you understand the structure of the telemetry events and how to modify them.
